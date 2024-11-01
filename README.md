@@ -1,4 +1,4 @@
-Lista de comandos usados en la terminal de VS Code para realizar la conexión con el repositorio
+Lista de comandos usados en la terminal de VS Code para realizar la conexión con el repositorio:
 
 git config --global user.name "danierod01"
 git config --global user.email "daniel01mr@gmail.com"
