@@ -20,7 +20,7 @@ variable "private_subnets" {
 
 variable "availability_zones" {
   description = "Zonas de disponibilidad para las subredes"
-  default     = ["us-east-1a","us-east-1b"]
+  default     = ["us-east-1a", "us-east-1b"]
 }
 
 variable "enable_nat_gateway" {

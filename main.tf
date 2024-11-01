@@ -3,7 +3,7 @@ module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
   version = "5.14.0"
 
-  name = "VPC-modulo"
+  name = "VPC-Lab4"
   cidr = var.vpc-cidr
 
   azs                = var.availability_zones
@@ -12,8 +12,9 @@ module "vpc" {
   enable_nat_gateway = var.enable_nat_gateway
 
   tags = {
-    Name = "VPC-modulo"
-    Env  = "DEV"
+    Name  = "VPC-Lab4"
+    Env   = "Lab4"
+    Owner = "Dani"
   }
 }
 //Crear SG para conexión con el EFS
@@ -35,54 +36,72 @@ resource "aws_security_group" "SG-EFS" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
+  tags = {
+    Name  = "SG-EFS-Lab4"
+    Env   = "Lab4"
+    Owner = "Dani"
+  }
 }
 
 //Crear Security Group de las instancias
 resource "aws_security_group" "SG-instancias" {
-  name = "SG-instancias"
+  name        = "SG-instancias"
   description = "Security Group de instancias"
-  vpc_id = module.vpc.default_vpc_id
+  vpc_id      = module.vpc.default_vpc_id
 
   ingress {
-    from_port = 80
-    to_port = 80
-    protocol = "tcp"
+    from_port       = 80
+    to_port         = 80
+    protocol        = "tcp"
     security_groups = aws_security_group.SG-ALB.id
   }
 
   ingress {
-    from_port = 2049
-    to_port = 2049
-    protocol = "tcp"
+    from_port       = 2049
+    to_port         = 2049
+    protocol        = "tcp"
     security_groups = aws_security_group.SG-EFS.id
 
   }
   egress {
-    from_port = 0
-    to_port = 0
-    protocol = "-1"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
-      }
+  }
+
+  tags = {
+    Name  = "SG-Instancias-Lab4"
+    Env   = "Lab4"
+    Owner = "Dani"
+  }
 }
 
 //Crear Security Group del ALB
 resource "aws_security_group" "SG-ALB" {
-  name = "SG-ALB"
+  name        = "SG-ALB"
   description = "Security Group del ALB"
-  vpc_id = module.vpc.vpc_id
+  vpc_id      = module.vpc.vpc_id
 
   ingress {
-    from_port = 443
-    to_port = 443
-    protocol = "tcp"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
   egress {
-    from_port = 80
-    to_port = 80
-    protocol = "tcp"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
     cidr_blocks = ["172.16.0.0/16"]
+  }
+
+  tags = {
+    Name  = "SG-ALB-Lab4"
+    Env   = "Lab4"
+    Owner = "Dani"
   }
 }
 
@@ -95,6 +114,12 @@ resource "aws_lb" "ALB-1" {
   subnets            = module.vpc.public_subnets
 
   enable_deletion_protection = false
+
+  tags = {
+    Name  = "ALB-Lab4"
+    Env   = "Lab4"
+    Owner = "Dani"
+  }
 }
 
 //Crear el Target Group
@@ -112,8 +137,11 @@ resource "aws_lb_target_group" "TG-ALB" {
     healthy_threshold   = 5
     unhealthy_threshold = 2
   }
+
   tags = {
-    name = "TG-ALB"
+    Name  = "TG-ALB-Lab4"
+    Env   = "Lab4"
+    Owner = "Dani"
   }
 }
 
@@ -123,8 +151,11 @@ resource "aws_acm_certificate" "certificado-SSL" {
   private_key      = file("./Key.pem")
 
   tags = {
-    Name = "Certificado SSL"
+    Name  = "Certificado SSL"
+    Env   = "Lab4"
+    Owner = "Dani"
   }
+
 }
 
 //Crear el listener para HTTPS del Target Group
@@ -141,6 +172,12 @@ resource "aws_lb_listener" "listener-https" {
     type             = "forward"
     target_group_arn = aws_lb_target_group.TG-ALB.arn
   }
+
+  tags = {
+    Name  = "Listener-HTTPS-Lab4"
+    Env   = "Lab4"
+    Owner = "Dani"
+  }
 }
 
 //Crear EFS a mano
@@ -149,13 +186,15 @@ resource "aws_efs_file_system" "EFS-Lab4" {
   encrypted      = true
 
   tags = {
-    name = "EFS-Lab4"
+    Name  = "EFS-Lab4"
+    Env   = "Lab4"
+    Owner = "Dani"
   }
 }
 
 //Crear mount del efs
 resource "aws_efs_mount_target" "mount-EFS" {
-  count        = length(module.vpc.private_subnets)
+  count           = length(module.vpc.private_subnets)
   file_system_id  = aws_efs_file_system.EFS-Lab4.id
   subnet_id       = element(module.vpc.private_subnets, count.index)
   security_groups = [aws_security_group.SG-EFS.id]
