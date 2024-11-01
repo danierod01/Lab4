@@ -119,8 +119,8 @@ resource "aws_lb_target_group" "TG-ALB" {
 
 //Crear ACM para ssl
 resource "aws_acm_certificate" "certificado-SSL" {
-  certificate_body = file("C:/Users/Dani/Desktop/Bootcamp/Certificados/Certificado.pem")
-  private_key      = file("C:/Users/Dani/Desktop/Bootcamp/Certificados/Key.pem")
+  certificate_body = file("./Certificado.pem")
+  private_key      = file("./Key.pem")
 
   tags = {
     Name = "Certificado SSL"
