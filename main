@@ -1,0 +1,472 @@
+//Crear VPC con módulo
+module "vpc" {
+  source  = "terraform-aws-modules/vpc/aws"
+  version = "5.14.0"
+
+  name = "VPC-Lab4"
+  cidr = var.vpc-cidr
+
+  azs                = var.availability_zones
+  public_subnets     = var.public_subnets
+  private_subnets    = var.private_subnets
+  enable_nat_gateway = var.enable_nat_gateway
+
+  tags = {
+    Name  = "VPC-Lab4"
+    Env   = "Lab4"
+    Owner = "Dani"
+  }
+}
+
+//Crear SG para PostgreSQL
+resource "aws_security_group" "SG-PSQL" {
+  vpc_id = module.vpc.vpc_id
+  ingress {
+    from_port = 5432
+    to_port = 5432
+    protocol = "tcp"
+    cidr_blocks = [module.vpc.vpc_cidr_block]
+  }
+
+  egress {
+    from_port = 0
+    to_port = 0
+    protocol = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name  = "SG-PSQL-Lab4"
+    Env   = "Lab4"
+    Owner = "Dani"
+  }
+}
+
+//Crear SG para conexión con el EFS
+resource "aws_security_group" "SG-EFS" {
+  name        = "SG-EFS"
+  description = "SG para EFS"
+  vpc_id      = module.vpc.vpc_id
+
+  ingress {
+    from_port   = 2049
+    to_port     = 2049
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name  = "SG-EFS-Lab4"
+    Env   = "Lab4"
+    Owner = "Dani"
+  }
+}
+
+//Crear Security Group de las instancias
+resource "aws_security_group" "SG-instancias" {
+  name        = "SG-instancias"
+  description = "Security Group de instancias"
+  vpc_id      = module.vpc.default_vpc_id
+
+  ingress {
+    from_port       = 80
+    to_port         = 80
+    protocol        = "tcp"
+    security_groups = aws_security_group.SG-ALB.id
+  }
+
+  ingress {
+    from_port       = 2049
+    to_port         = 2049
+    protocol        = "tcp"
+    security_groups = aws_security_group.SG-EFS.id
+
+  }
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name  = "SG-Instancias-Lab4"
+    Env   = "Lab4"
+    Owner = "Dani"
+  }
+}
+
+//Crear Security Group del ALB
+resource "aws_security_group" "SG-ALB" {
+  name        = "SG-ALB"
+  description = "Security Group del ALB"
+  vpc_id      = module.vpc.vpc_id
+
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["172.16.0.0/16"]
+  }
+
+  tags = {
+    Name  = "SG-ALB-Lab4"
+    Env   = "Lab4"
+    Owner = "Dani"
+  }
+}
+
+//Crear el Application Load Balancer
+resource "aws_lb" "ALB-1" {
+  name               = "ALB-1"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = [aws_security_group.SG-ALB.id]
+  subnets            = module.vpc.public_subnets
+
+  enable_deletion_protection = false
+
+  tags = {
+    Name  = "ALB-Lab4"
+    Env   = "Lab4"
+    Owner = "Dani"
+  }
+}
+
+//Crear el Target Group
+resource "aws_lb_target_group" "TG-ALB" {
+  name     = "TG-ALB"
+  port     = 443
+  protocol = "HTTPS"
+  vpc_id   = module.vpc.vpc_id
+
+  health_check {
+    protocol            = "HTTPS"
+    path                = "/health"
+    interval            = 30
+    timeout             = 5
+    healthy_threshold   = 5
+    unhealthy_threshold = 2
+  }
+
+  tags = {
+    Name  = "TG-ALB-Lab4"
+    Env   = "Lab4"
+    Owner = "Dani"
+  }
+}
+
+//Crear ACM para SSL
+resource "aws_acm_certificate" "certificado-SSL" {
+  certificate_body = file("./Certificado.pem")
+  private_key      = file("./Key.pem")
+
+  tags = {
+    Name  = "Certificado SSL"
+    Env   = "Lab4"
+    Owner = "Dani"
+  }
+
+}
+
+//Crear el listener para HTTPS del Target Group
+resource "aws_lb_listener" "listener-https" {
+  load_balancer_arn = aws_lb.alb-1.arn
+  port              = 443
+  protocol          = "HTTPS"
+
+  # Asociar el certificado ACM al listener
+  ssl_policy      = "ELBSecurityPolicy-2016-08"
+  certificate_arn = aws_acm_certificate.certificado-SSL.arn
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.TG-ALB.arn
+  }
+
+  tags = {
+    Name  = "Listener-HTTPS-Lab4"
+    Env   = "Lab4"
+    Owner = "Dani"
+  }
+}
+
+//Crear EFS a mano
+resource "aws_efs_file_system" "EFS-Lab4" {
+  creation_token = "efs-token"
+  encrypted      = true
+
+  tags = {
+    Name  = "EFS-Lab4"
+    Env   = "Lab4"
+    Owner = "Dani"
+  }
+}
+
+//Crear mount del efs
+resource "aws_efs_mount_target" "mount-EFS" {
+  count           = length(module.vpc.private_subnets)
+  file_system_id  = aws_efs_file_system.EFS-Lab4.id
+  subnet_id       = element(module.vpc.private_subnets, count.index)
+  security_groups = [aws_security_group.SG-EFS.id]
+}
+
+locals {
+  s3_bucket_arn = aws_s3_bucket.s3-Lab4.arn
+}
+
+resource "aws_s3_bucket" "s3-Lab4" {
+  bucket = "s3-Lab4"
+
+  tags = {
+    name  = "s3-Lab4"
+    env   = "Lab4"
+    owner = "Dani"
+  }
+}
+
+resource "aws_s3_bucket_website_configuration" "blog" {
+  bucket = aws_s3_bucket.s3-Lab4.id
+  index_document {
+    suffix = "index.html"
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "public_access" {
+  bucket                  = aws_s3_bucket.s3-dani.id
+  block_public_acls       = false
+  block_public_policy     = false
+  ignore_public_acls      = false
+  restrict_public_buckets = false
+}
+
+resource "aws_s3_bucket_policy" "public_policy" {
+  bucket = aws_s3_bucket.s3-Lab4.id
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Sid    = "PublicReadGetObject",
+        Effect = "Allow"
+        Principal = {
+          "Service" : "cloudfront.amazonaws.com"
+        },
+        Action = ["s3:GetObject"]
+        Resource = [
+          "${aws_s3_bucket.s3-Lab4.arn}",
+          "${aws_s3_bucket.s3-Lab4.arn}/*" //Acceso a objetos dentros del bucket
+        ]
+        Condition = {
+          StringEquals = {
+            "AWS:SourceArn" : "arn:aws:cloudfront::111122223333:distribution/<CloudFront distribution ID>"
+          }
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_s3_object" "object-Lab4" {
+  bucket       = aws_s3_bucket.s3-Lab4.id
+  key          = "index-html"
+  source       = "index.html"
+  content_type = "text/html"
+}
+
+resource "aws_s3_bucket_versioning" "versioning-lab4" {
+  bucket = aws_s3_bucket.s3-Lab4.id
+  versioning_configuration {
+    status = enabled
+  }
+}
+
+resource "aws_cloudfront_distribution" "CDN-Lab4" {
+  origin {
+    domain_name = aws_s3_bucket.s3-Lab4.bucket_regional_domain_name
+    origin_id   = aws_s3_bucket.s3-Lab4.id
+  }
+  enabled             = true
+  default_root_object = "index.html"
+  default_cache_behavior {
+    allowed_methods  = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    cached_methods   = ["GET", "HEAD"]
+    target_origin_id = aws_s3_bucket.s3-Lab4.id
+
+    forwarded_values {
+      query_string = false
+      headers      = ["Origin"]
+
+      cookies {
+        forward = "none"
+      }
+    }
+
+    viewer_protocol_policy = "allow-all"
+    min_ttl                = 0
+    default_ttl            = 3600
+    max_ttl                = 86400
+  }
+  restrictions {
+    geo_restriction {
+      restriction_type = "whitelist"
+      locations        = ["ES ", "US", "CA", "GB", "DE"]
+    }
+  }
+
+  viewer_certificate {
+    cloudfront_default_certificate = true
+  }
+}
+
+//Para generar una contraseña para la Base de Datos de forma aleatoria
+resource "random_password" "PSQL-Pass" {
+  length  = 16
+  special = true
+}
+
+//Crear el secreto para almacenar la contraseña
+resource "aws_secretsmanager_secret" "PSQL-secret" {
+  name = "PSQL-secret"
+}
+
+//Crear versión del secreto
+resource "aws_secretsmanager_secret_version" "PSQL-secret-version" {
+  secret_id = aws_secretsmanager_secret.PSQL-secret.id
+  secret_string = jsonencode({
+    username = var.PSQL-username
+    password = random_password.PSQL-Pass.result
+  })
+}
+
+//Crear el grupo de subredes para PostgreSQL
+resource "aws_db_subnet_group" "RDS-subnet" {
+  name       = "RDS-subnet"
+  subnet_ids = module.vpc.private_subnets
+
+  tags = {
+    name  = "RDS-subnet-Lab4"
+    env   = "Lab4"
+    owner = "Dani"
+  }
+}
+
+//Conseguir la versión actual del secreto que se pide
+data "aws_secretsmanager_secret_version" "PSQL-secretversion"{
+  secret_id = aws_secretsmanager_secret.PSQL-secret.id
+}
+
+//Crear la Base de Datos de PostgreSQL
+resource "aws_db_instance" "PSQL-Lab4" {
+  identifier = "PSQL-Lab4"
+  engine = "postgres"
+  engine_version = "16.4"
+  instance_class = "db.t4g.micro"
+  allocated_storage = 20
+  storage_type = "gp3"
+  multi_az = true
+  publicly_accessible = false
+  db_subnet_group_name = aws_db_subnet_group.RDS-subnet.name
+  vpc_security_group_ids = [aws_security_group.SG-PSQL.id]
+
+  //Obtener credenciales del Secrets Manager
+  username = jsondecode(data.aws_secretsmanager_secret_version.PSQL-secret-version.secret_string)["username"]
+  password = jsondecode(data.aws_secretsmanager_secret_version.PSQL-secret-version.secret_string)["password"]
+
+  //Configurar Backups
+  backup_retention_period = 7
+  backup_window = "03:00-06:00"
+
+  tags = {
+    name  = "PSQL-Lab4"
+    env   = "Lab4"
+    owner = "Dani"
+  }
+}
+
+//Crear el Auto Scaling Group
+module "ASG-Lab4" {
+  source  = "terraform-aws-modules/autoscaling/aws"
+  version = "8.0.0"
+  name    = "ASG-Lab4"
+
+
+  // Creación del Launch template
+  launch_template_name        = "LT-Lab4"
+  launch_template_description = "Launch Template del Laboratorio 4"
+  update_default_version      = true
+
+  image_id          = "ami-06b21ccaeff8cd686"
+  instance_type     = "t2.micro"
+  ebs_optimized     = true
+  enable_monitoring = true
+  security_groups   = [aws_security_group.SG-instancias.id]
+
+  // Creación de perfil de instancia IAM
+  create_iam_instance_profile = true
+  iam_role_name               = "ASG-SSM"
+  iam_role_path               = "/ec2/"
+  iam_role_policies = {
+    AmazonSSMManagedInstanceCore = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+  }
+
+  // Atachar el Target Group
+   traffic_source_attachments = {
+    ex-alb = {
+      traffic_source_identifier = aws_lb_target_group.TG-ALB.arn
+      traffic_source_type       = "elbv2"
+    }
+  }
+
+
+  min_size         = 2
+  max_size         = 3
+  desired_capacity = 2
+
+  vpc_zone_identifier = module.vpc.private_subnets
+  health_check_type   = "ELB"
+
+  user_data = base64encode(<<-EOF
+              #!/bin/bash
+
+              sudo yum update -y
+
+              yum install -y amazon-efs-utils nfs-utils httpd
+
+              mkdir -p /mnt/efs
+
+              mount -t efs -o tls ${aws_efs_file_system.EFS_test.id}:/ /mnt/efs
+
+              # Añadir el EFS al /etc/fstab para montaje automático en reinicios
+              echo "${aws_efs_file_system.EFS_test.id}:/ /mnt/efs efs _netdev,tls 0 0" >> /etc/fstab
+
+              sudo systemctl enable httpd
+              sudo systemctl start httpd
+
+              #para verificar permisos
+              ls -ld /mnt/efs/html
+
+              sudo echo "OK" > /var/www/html/health
+              EOF
+  )
+
+  tags = {
+    name = "ASG-1"
+  }
+
+  depends_on = [aws_lb_target_group.TG-ALB]
+}
