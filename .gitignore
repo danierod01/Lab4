@@ -1,7 +1,7 @@
 Token Lab4.txt
 *.terraform.tfstate
 *.terraform.tfstate.backup
-*.terraform.tfstate.lock.info
+*.terraform.tfstate.lock.hcl
 .terraform/
 *.log
 *.bak
