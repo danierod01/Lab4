@@ -71,6 +71,7 @@ resource "aws_db_instance" "PSQL-Lab4" {
   publicly_accessible = false
   db_subnet_group_name = aws_db_subnet_group.RDS-subnet.name
   vpc_security_group_ids = [aws_security_group.SG-PSQL.id]
+  skip_final_snapshot = true 
 
   //Obtener credenciales del Secrets Manager
   username = jsondecode(data.aws_secretsmanager_secret_version.PSQL-secretversion.secret_string)["username"]
