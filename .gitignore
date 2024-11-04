@@ -4,4 +4,3 @@ Token Lab4.txt
 *.terraform.tfstate.lock.hcl
 .terraform/
 *.log
-*.bak
