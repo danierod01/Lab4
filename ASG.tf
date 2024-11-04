@@ -18,6 +18,7 @@ resource "aws_security_group" "SG-instancias" {
     protocol        = "tcp"
     security_groups = [aws_security_group.SG-EFS.id]
   }
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -91,8 +92,11 @@ module "autoscaling" {
               sudo systemctl enable httpd
               sudo systemctl start httpd
 
-              #para verificar permisos
-              ls -ld /mnt/efs/html
+              # Añadir el DNS interno del endpoint de la DB como host
+              DB_HOST="postgresql.lab4.internal"
+
+              # Usar el endpoint de la VPC con DNS interno para conectar con el S3
+              S3_ENDPOINT="s3.lab4.internal"
 
               sudo echo "OK" > /var/www/html/health
               EOF
