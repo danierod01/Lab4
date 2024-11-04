@@ -1,78 +1,10 @@
-
-//Crear Security Group de las instancias
-resource "aws_security_group" "SG-instancias" {
-  name        = "SG-instancias"
-  description = "Security Group de instancias"
-  vpc_id      = module.vpc.vpc_id
-
-  ingress {
-    from_port       = 80
-    to_port         = 80
-    protocol        = "tcp"
-    security_groups = [aws_security_group.alb_sg.id]
-  }
-
-  ingress {
-    from_port       = 2049
-    to_port         = 2049
-    protocol        = "tcp"
-    security_groups = [aws_security_group.SG-EFS.id]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-  
-  tags = merge(var.tags, {
-    additional_tag = "SG-Instancias-Lab4"
-  })
-}
-
-//Crear el Auto Scaling Group
-module "autoscaling" {
-  source  = "terraform-aws-modules/autoscaling/aws"
-  version = "8.0.0"
-  name    = "ASG-Lab4"
-
-
-  // Creación del Launch template
-  launch_template_name        = "LT-Lab4"
-  launch_template_description = "Launch Template del Laboratorio 4"
-  update_default_version      = true
-
-  image_id          = "ami-0866a3c8686eaeeba"
-  instance_type     = "t2.micro"
-  ebs_optimized     = true
-  enable_monitoring = true
-  security_groups   = [aws_security_group.SG-instancias.id]
-
-  // Creación de perfil de instancia IAM
-  create_iam_instance_profile = true
-  iam_role_name               = "ASG-SSM"
-  iam_role_path               = "/ec2/"
-  iam_role_policies = {
-    AmazonSSMManagedInstanceCore = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
-  }
-
-  // Atachar el Target Group
-   traffic_source_attachments = {
-    ex-alb = {
-      traffic_source_identifier = aws_lb_target_group.tg-alb.arn
-      traffic_source_type      = "elbv2"
-    }
-  }
-
-
-  min_size         = 2
-  max_size         = 3
-  desired_capacity = 2
-
-  vpc_zone_identifier = module.vpc.private_subnets
-  health_check_type   = "ELB"
-
+// Crear instancia en la subred privada
+resource "aws_instance" "instancia" {
+  ami           = "ami-0866a3c8686eaeeba"
+  instance_type = "t2.micro"
+  subnet_id     = module.vpc.private_subnets
+  iam_instance_profile = aws_iam_instance_profile.profileSSM.name
+  security_groups = [aws_security_group.SG-instancias.id]
   user_data = base64encode(<<-EOF
               #!/bin/bash
 
@@ -210,10 +142,12 @@ module "autoscaling" {
                 sudo echo "OK" > /var/www/html/health
                 EOF
   )
-
+  vpc_security_group_ids = [aws_security_group.instance.id]
   tags = merge(var.tags, {
-    additional_tag = "ASG-Lab4"
+    additional_tag = "Instancia-Lab4"
   })
-
+  lifecycle {
+    create_before_destroy = true
+  }
   depends_on = [aws_lb_target_group.tg-alb]
 }

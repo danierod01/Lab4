@@ -18,11 +18,9 @@ resource "aws_security_group" "alb_sg" {
     cidr_blocks = ["172.16.0.0/16"]
   }
 
-  tags = {
-    Name  = "SG-ALB-Lab4"
-    Env   = "Lab4"
-    Owner = "Dani"
-  }
+  tags = merge(var.tags, {
+    additional_tag = "SG-ALB-Lab4"
+  })
 }
 
 //Crear el Application Load Balancer
@@ -35,11 +33,9 @@ resource "aws_lb" "alb-lab4" {
 
   enable_deletion_protection = false
 
-  tags = {
-    Name  = "alb-Lab4"
-    Env   = "Lab4"
-    Owner = "Dani"
-  }
+  tags = merge(var.tags, {
+    additional_tag = "ALB-Lab4"
+  })
 }
 
 //Crear el Target Group
@@ -58,11 +54,9 @@ resource "aws_lb_target_group" "tg-alb" {
     unhealthy_threshold = 2
   }
 
-  tags = {
-    Name  = "TG-ALB-Lab4"
-    Env   = "Lab4"
-    Owner = "Dani"
-  }
+  tags = merge(var.tags, {
+    additional_tag = "TG-ALB-Lab4"
+  })
 }
 
 //Crear ACM para SSL
@@ -70,11 +64,9 @@ resource "aws_acm_certificate" "certificado-SSL" {
   certificate_body = file("./Certificados/Certificado.pem")
   private_key      = file("./Certificados/Key.pem")
 
-  tags = {
-    Name  = "Certificado SSL"
-    Env   = "Lab4"
-    Owner = "Dani"
-  }
+  tags = merge(var.tags, {
+    additional_tag = "ACM-Lab4"
+  })
 
 }
 
@@ -93,9 +85,7 @@ resource "aws_lb_listener" "listener-https" {
     target_group_arn = aws_lb_target_group.tg-alb.arn
   }
 
-  tags = {
-    Name  = "Listener-HTTPS-Lab4"
-    Env   = "Lab4"
-    Owner = "Dani"
-  }
+  tags = merge(var.tags, {
+    additional_tag = "Listener-HTTPS-Lab4"
+  })
 }

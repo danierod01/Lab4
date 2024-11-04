@@ -14,11 +14,9 @@ module "vpc" {
   enable_dns_hostnames = true
   enable_dns_support   = true
 
-  tags = {
-    Name  = "VPC-Lab4"
-    Env   = "Lab4"
-    Owner = "Dani"
-  }
+    tags = merge(var.tags, {
+    additional_tag = "VPC-Lab4"
+  })
 }
 
 //Crear VPC endpoint para S3
@@ -44,11 +42,9 @@ policy = jsonencode({
       }
     ]
   })
-  tags = {
-    Name  = "S3-Endpoint-Lab4"
-    Env   = "Lab4" 
-    Owner = "Dani"
-  }
+  tags = merge(var.tags, {
+    additional_tag = "S3-Endpoint-Lab4"
+  })
 }
 
 

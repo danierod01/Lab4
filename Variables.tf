@@ -4,6 +4,11 @@ variable "aws_region" {
   default     = "us-east-1"
 }
 
+variable "nombre_lab" {
+  description = "Nombre del laboratorio"
+  default     = "Lab4"
+}
+
 //Variable que guarda el CIDR del VPC
 variable "vpc-cidr" {
   description = "CIDR Block del VPC"
@@ -38,5 +43,15 @@ variable "enable_nat_gateway" {
 variable "PSQL-username" {
   description = "Nombre de usuario de PSQL"
   type        = string
-  default     = "dani"
+  default     = "postgres"
+}
+
+// Variable que guarda los tags de los recursos
+variable "tags" {
+  description = "Tags de los recursos"
+  type        = map(string)
+  default     = {
+    Owner = "Dani"
+    Env   = "Lab4"
+  }
 }

@@ -15,30 +15,8 @@ resource "aws_security_group" "SG-PSQL" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags = {
-    Name  = "SG-PSQL-Lab4"
-    Env   = "Lab4"
-    Owner = "Dani"
-  }
-}
-
-//Para generar una contraseña para la Base de Datos de forma aleatoria
-resource "random_password" "PSQL-Pass" {
-  length  = 16
-  special = true
-}
-
-//Crear el secreto para almacenar la contraseña
-resource "aws_secretsmanager_secret" "PSQL-secret" {
-  name = "psql-secret"
-}
-
-//Crear versión del secreto
-resource "aws_secretsmanager_secret_version" "PSQL-secret-version" {
-  secret_id = aws_secretsmanager_secret.PSQL-secret.id
-  secret_string = jsonencode({
-    username = var.PSQL-username
-    password = random_password.PSQL-Pass.result
+  tags = merge(var.tags, {
+    additional_tag = "SG-PSQL-Lab4"
   })
 }
 
@@ -47,11 +25,9 @@ resource "aws_db_subnet_group" "RDS-subnet" {
   name       = "rds_subnet"
   subnet_ids = module.vpc.private_subnets
 
-  tags = {
-    name  = "RDS-subnet-Lab4"
-    env   = "Lab4"
-    owner = "Dani"
-  }
+  tags = merge(var.tags, {
+    additional_tag = "RDS-subnet-Lab4"
+  })
 }
 
 //Conseguir la versión actual del secreto que se pide
@@ -81,9 +57,7 @@ resource "aws_db_instance" "PSQL-Lab4" {
   backup_retention_period = 7
   backup_window = "03:00-06:00"
 
-  tags = {
-    name  = "PSQL-Lab4"
-    env   = "Lab4"
-    owner = "Dani"
-  }
+  tags = merge(var.tags, {
+    additional_tag = "PostgreSQL-Lab4"
+  })
 }
