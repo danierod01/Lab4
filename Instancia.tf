@@ -14,8 +14,8 @@ resource "aws_instance" "instancia" {
               
 
               # Instalar los recursos necesarios para montar el EFS, servidor Apache, PHP, y las extensiones que son necesarias para drupal
-              sudo apt install -y amazon-efs-utils nfs-utils -y apache2 php libapache2-mod-php php-cli php-curl php-gd php-xml php-mbstring php-zip php-json php-pgsql 
-
+              sudo apt install -y amazon-efs-utils nfs-utils jq apache2 libapache2-mod-php php8.3 php8.3-cli php8.3-common php8.3-pgsql php8.3-zip php8.3-gd php8.3-mbstring php8.3-curl php8.3-xml php8.3-bcmath php8.3-redis postgresql-client postgresql
+              
               # Instalar cliente CLI de AWS
               sudo curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
               sudo unzip awscliv2.zip
@@ -26,7 +26,7 @@ resource "aws_instance" "instancia" {
               sudo systemctl start apache2
 
               # Obtener las credenciales de la Base de Datos PostgreSQL
-              SECRET_NAME="postgre_credentials"
+              SECRET_NAME="${postgre_credentials}"
               REGION="us-east-1"
 
               DB_CREDS=$(aws secretsmanager get-secret-value --secret-id $SECRET_NAME --region $REGION --query SecretString --output text)
@@ -51,22 +51,9 @@ resource "aws_instance" "instancia" {
               sudo chown -R www-data:www-data /var/www/html/drupal
               sudo chmod -R 755 /var/www/html/drupal
 
-              # Crear un archivo de configuración Virtual Host para Drupal
-              sudo cat <<EOF | sudo tee /etc/apache2/sites-available/drupal.conf
-              <VirtualHost *:80>
-                  ServerAdmin admin@example.com
-                  DocumentRoot /var/www/html/drupal
-                  ServerName alb.lab4_internal
-
-                  <Directory /var/www/html/drupal>
-                      AllowOverride All
-                      Require all granted
-                  </Directory>
-
-                  ErrorLog \${APACHE_LOG_DIR}/drupal_error.log
-                  CustomLog \${APACHE_LOG_DIR}/drupal_access.log combined
-              </VirtualHost>
-              EOF>>
+              # Comprobar que el Document Root es /var/www/html/drupal, y si no, cambiarlo
+              if ! grep -qs "DocumentRoot /var/www/html/drupal" /etc/apache2/sites-available/000-default.conf; then sudo sed -i 's|DocumentRoot/var/www/html|DocumentRoot/var/www/html/drupal|' /etc/apache2/sites-available/000-default.conf fi
+              
 
               # Habilitar el nuevo sitio en Apache
               sudo a2ensite drupal.conf
@@ -112,31 +99,27 @@ resource "aws_instance" "instancia" {
 
                 \$databases['default']['default'] = array (
                   'driver' => 'pgsql',
-                  'database' => 'mydb',
-                  'username' => '$DB_USERNAME',
-                  'password' => '$DB_PASSWORD',
-                  'host' => 'db.internal.example.com',  # Reemplaza con el endpoint DNS interno de RDS
+                  'database' => 'drupaldb',
+                  'username' => '${DB_USERNAME}',
+                  'password' => '${DB_PASSWORD}',
+                  'host' => '${postgresql.lab4.internal}',  # Reemplaza con el endpoint DNS interno de RDS
                   'port' => '5432',
                   'prefix' => '',
                 );
 
                 EOT
-
                 
-                sudo mkdir -p /mnt/efs
+                sudo mkdir -p /mnt/efs/drupal
 
-                mount -t efs -o tls ${aws_efs_file_system.EFS-Lab4.id}:/ /mnt/efs
-
-                # Añadir el EFS al /etc/fstab para montaje automático en reinicios
-                echo "${aws_efs_file_system.EFS-Lab4.id}:/ /mnt/efs efs _netdev,tls 0 0" >> /etc/fstab
-
+                if ! grep -qs "${efs.lab4_internal}:/ /mnt/efs/drupal nfs4" /etc/fstab; then echo "${efs.lab4_internal}:/ /mnt/efs/drupal nfs4 nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport 0 0" | sudo tee -a /etc/fstab fi
                 
+                sudo mount -a
 
                 # Añadir el DNS interno del endpoint de la DB como host
-                DB_HOST="postgresql.lab4.internal"
+                DB_HOST="${postgresql.lab4.internal}"
 
                 # Usar el endpoint de la VPC con DNS interno para conectar con el S3
-                S3_ENDPOINT="s3.lab4.internal"
+                S3_ENDPOINT="${s3.lab4.internal}"
 
                 # Crear un archivo de estado para la salud de las instancias
                 sudo echo "OK" > /var/www/html/health

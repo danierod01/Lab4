@@ -50,4 +50,12 @@ resource "aws_route53_record" "s3_endpoint" {
   }
 }
 
+//Crear el registro de DNS para el endpoint del EFS
+resource "aws_route53_record" "efs" {
+  zone_id = aws_route53_zone.lab4_internal.id
+  name    = "efs.lab4_internal"
+  type    = "CNAME"
+  ttl     = 300
+  records = [aws_efs_file_system.EFS-Lab4.dns_name]
+}
 
