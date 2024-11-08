@@ -60,7 +60,7 @@ Cuando se ejecute el código de este laboratorio de terraform, se debe esperar p
 
 Ha habido un problema al final del desarrollo del laboratorio, como bien se dice más abajo, se intenta crear un ASG con una ami personalizada la cual ha sido puesta a disposición del profesor.
 
-Al ejecutar el user data, cloud init no lo interpreta correctamente, por lo que no se ejecuta el user data, aunque esto sí que estaba funcionando durante el desarrollo del laboratorio, y, por cuestiones de tiempo, no se ha podido solucionar. Por esta misma causa, no se podrá usar el EFS, ni se instala directamente Drupal en la Base de Datos, que era el plan inicial de este laboratorio. 
+Al ejecutar el user data, cloud init no lo interpreta correctamente, por lo que no se ejecuta el user data, aunque esto sí que estaba funcionando durante el desarrollo del laboratorio, y, por cuestiones de tiempo, ya que esto pasó en las últimas horas de laboratorio, no se ha podido solucionar. Por esta misma causa, no se podrá usar el EFS, ni se instala directamente Drupal en la Base de Datos, que era el plan inicial de este laboratorio. 
 
 Si el profesor lo desea, puede ejecutar el user data como un script en la instancia, y así se solucionaría el problema.
 
