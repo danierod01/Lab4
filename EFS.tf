@@ -18,11 +18,9 @@ resource "aws_security_group" "SG-EFS" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags = {
-    Name  = "SG-EFS-Lab4"
-    Env   = "Lab4"
-    Owner = "Dani"
-  }
+  tags = merge(var.tags, {
+    Name = "SG-EFS-Lab4"
+  })
 }
 
 //Crear EFS a mano
@@ -30,11 +28,9 @@ resource "aws_efs_file_system" "EFS-Lab4" {
   creation_token = "efs-token"
   encrypted      = true
 
-  tags = {
-    Name  = "EFS-Lab4"
-    Env   = "Lab4"
-    Owner = "Dani"
-  }
+  tags = merge(var.tags, {
+    Name = "EFS-Lab4"
+  })
 }
 
 //Crear mount del efs

@@ -1,0 +1,33 @@
+// Generar un ID aleatorio para los nombres de los secretos
+resource "random_id" "db_name" {
+  byte_length = 8
+}
+
+// Crear secreto para el usuario de la base de datos
+resource "aws_secretsmanager_secret" "db_username" {
+  name        = "wordpress-db-username-${random_id.db_name.hex}"
+  description = "Usuario para la base de datos PostgreSQL"
+}
+
+resource "aws_secretsmanager_secret_version" "db_username" {
+  secret_id     = aws_secretsmanager_secret.db_username.id
+  secret_string = "postgres"
+}
+
+// Crear secreto para la contraseña de la base de datos
+resource "aws_secretsmanager_secret" "postgre_password" {
+  name        = "wordpress-db-password-${random_id.db_name.hex}"
+  description = "Contraseña para la base de datos PostgreSQL"
+}
+
+resource "aws_secretsmanager_secret_version" "postgre_password" {
+  secret_id     = aws_secretsmanager_secret.postgre_password.id
+  secret_string = random_password.postgre_password.result
+}
+
+// Generar contraseña aleatoria
+resource "random_password" "postgre_password" {
+  length           = 16
+  special          = true
+  override_special = "!#$%&*()-_=+[]{}<>:?"
+}

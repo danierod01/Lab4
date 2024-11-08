@@ -39,18 +39,11 @@ variable "enable_nat_gateway" {
   default     = true
 }
 
-//Variable que guarda el nombre de usuario de la DB
-variable "PSQL-username" {
-  description = "Nombre de usuario de PSQL"
-  type        = string
-  default     = "postgres"
-}
-
 // Variable que guarda los tags de los recursos
 variable "tags" {
   description = "Tags de los recursos"
   type        = map(string)
-  default     = {
+  default = {
     Owner = "Dani"
     Env   = "Lab4"
   }

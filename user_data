@@ -1,0 +1,188 @@
+ #!/bin/bash -e
+
+            # Actualizar paquetes y el sistema
+            sudo apt update -y
+            sudo apt upgrade -y
+
+            # Instalar Apache y módulos PHP primero
+            sudo apt-get install -y apache2 php8.3 php8.3-cli php8.3-common unzip
+
+            sudo systemctl enable apache2
+            sudo systemctl start apache2
+            sudo systemctl restart apache2
+
+            # Instalar las herramientas de base de datos
+            sudo apt-get install -y postgresql-client postgresql
+
+            # Instalar módulos adicionales
+            sudo apt-get install -y nfs-common jq libapache2-mod-php8.3 php8.3-pgsql php8.3-zip php8.3-gd 
+
+            # Instalar módulos adicionales
+           sudo apt-get install -y php8.3-mbstring php8.3-curl php8.3-xml php8.3-bcmath php8.3-redis
+
+           # Instalar y habilitar Redis
+           sudo apt-get install -y redis-server
+           sudo systemctl enable redis-server
+           sudo systemctl start redis-server
+	   sudo apt-get install -y php-memcached
+
+            # Instalar el CLI de AWS
+            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+            unzip awscliv2.zip
+            sudo ./aws/install
+
+            # Limpiar archivos de instalación
+            rm -rf awscliv2.zip aws
+
+            # Descargar Drupal (Última versión estable) y descomprimir en /var/www/html/drupal
+            cd /tmp
+            sudo curl -sSL https://www.drupal.org/download-latest/tar.gz -o drupal.tar.gz
+            if [[ -f "drupal.tar.gz" ]]; then
+                sudo tar -xzf drupal.tar.gz
+                sudo mv drupal-* /var/www/html/drupal
+            else
+                echo "Error: La descarga de Drupal falló."
+                exit 1
+            fi
+
+            # Habilitar el módulo rewrite de Apache para que funcione con Drupal
+            sudo a2enmod rewrite
+            sudo a2enmod php8.3
+
+            # Configurar permisos para que Apache pueda acceder a los archivos de Drupal
+            sudo chown -R www-data:www-data /var/www/html/drupal
+            sudo chmod -R 755 /var/www/html/drupal
+
+            # Verificar y cambiar DocumentRoot en Apache
+            if ! grep -qs "DocumentRoot /var/www/html/drupal" /etc/apache2/sites-available/000-default.conf; then
+                sudo sed -i 's|DocumentRoot /var/www/html|DocumentRoot /var/www/html/drupal|' /etc/apache2/sites-available/000-default.conf
+            fi
+
+            # Habilitar sitio y módulo PHP en Apache
+            sudo a2ensite 000-default.conf
+            sudo a2enmod php8.3
+            sudo systemctl restart apache2
+
+            # Crear archivo settings.php para Drupal con configuración para PostgreSQL y darle permisos a Apache
+            cd /var/www/html/drupal/sites/default
+            sudo cp default.settings.php settings.php
+            sudo chown www-data:www-data settings.php
+            sudo chmod 666 settings.php
+
+            # Reiniciar Apache
+            sudo systemctl restart apache2
+
+            # Crear base de datos y usuario
+            sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE drupaldb TO postgres;"
+
+            # Ajustar propietario del esquema y permisos
+            sudo -u postgres psql -d drupaldb -c "ALTER SCHEMA public OWNER TO postgres;"
+            sudo -u postgres psql -d drupaldb -c "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO postgres;"
+            sudo -u postgres psql -d drupaldb -c "GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO postgres;"
+            sudo -u postgres psql -d drupaldb -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO postgres;"
+
+            # Cambiar el valor de bytea_output a escape
+            sudo -u postgres psql -d drupaldb -c "ALTER DATABASE drupaldb SET bytea_output = 'escape';"
+
+            # Instalar módulo de Redis para Drupal y dar permisos a Apache para poder instalarlo
+            cd /var/www/html/drupal
+            sudo mkdir -p /var/www/.cache/composer
+            sudo chown -R www-data:www-data /var/www/.cache/composer
+            sudo chown -R www-data:www-data /var/www/html/drupal/composer.json
+            sudo chown -R www-data:www-data /var/www/html/drupal/composer.lock
+            sudo chmod -R 755 /var/www/.cache/composer
+            sudo chmod -R 755 /var/www/html/drupal/composer.json
+            sudo chmod -R 755 /var/www/html/drupal/composer.lock
+            sudo -u www-data composer require drupal/redis --no-cache
+
+            # Configurar el archivo settings.php
+            sudo tee /var/www/html/drupal/sites/default/settings.php > /dev/null <<'EOF1'
+            <?php
+            $settings['hash_salt'] = 'openssl rand -base64 48';
+            $settings['update_free_access'] = TRUE;
+            $config_directories['sync'] = '/var/www/html/drupal/config/sync';
+            $databases['default']['default'] = array (
+              'database' => 'drupaldb',
+              'username' => 'postgres',
+              'password' => '1.2.3.4.',
+              'prefix' => '',
+              'host' => 'postgresql.dns_name',
+              'port' => '5432',
+              'driver' => 'pgsql',
+              'namespace' => 'Drupal\\pgsql\\Driver\\Database\\pgsql',
+              'autoload' => 'core/modules/pgsql/src/Driver/Database/pgsql/',
+            );
+
+            # Configuración de Redis
+            $settings['redis.connection']['interface'] = 'PhpRedis'; 
+            $settings['redis.connection']['host'] = 'postgresql.dns_name'; 
+            $settings['cache']['default'] = 'cache.backend.redis';
+            $settings['cache']['port'] = '6379';
+            $settings['cache_prefix']['default'] = 'drupal_';
+            $settings['cache']['bins']['form'] = 'cache.backend.database';
+            $settings['container_yamls'][] = 'modules/contrib/redis/redis.services.yml';
+
+            if (file_exists($app_root . '/' . $site_path . '/modules/contrib/redis/example.services.yml')) {
+                $settings['container_yamls'][] = 'modules/contrib/redis/example.services.yml';
+                error_log('Redis services.yml loaded');
+            }
+            
+
+            // Usar Memcached para la caché de sesiones
+            $settings['memcache']['bins']['session'] = 'default';
+            ini_set('session.save_handler', 'memcached');
+            ini_set('session.save_path', 'memcached.dns_name:11211');
+
+EOF1
+
+            # Configurar Apache para interpretar archivos PHP
+            sudo tee /etc/apache2/sites-available/000-default.conf > /dev/null <<'EOF2'
+            <VirtualHost *:80>
+                DocumentRoot /var/www/html/drupal
+                <Directory /var/www/html/drupal>
+                    AllowOverride All
+                    Require all granted
+                    <FilesMatch \.php$>
+                        SetHandler application/x-httpd-php
+                    </FilesMatch>
+                </Directory>
+            </VirtualHost>
+EOF2
+
+            sudo tee /etc/apache2/mods-enabled/dir.conf > /dev/null <<'EOF3' 
+            <IfModule mod_dir.c>
+            DirectoryIndex index.php index.html index.cgi index.pl index.xhtml index.htm
+            </IfModule>
+EOF3
+
+            # Crear directorio files y cambiar permisos
+            sudo mkdir -p /var/www/html/drupal/sites/default/files/translations
+            sudo chown -R www-data:www-data /var/www/html/drupal/sites/default/files
+            sudo chmod -R 755 /var/www/html/drupal/sites/default/files
+            sudo find /var/www/html/drupal/sites/default/files/translations -type f -exec chmod 644 {} \;
+            sudo find /var/www/html/drupal/sites/default/files/translations -type d -exec chmod 755 {} \;
+            sudo chown -R www-data:www-data /var/www/html/drupal
+            sudo chmod -R 755 /var/www/html/drupal
+            sudo chmod 664 /var/www/html/drupal/sites/default/settings.php
+
+            # Instalar Drush y ejecutar la instalación de Drupal
+            sudo apt-get install -y composer
+            cd /var/www/html/drupal
+            sudo -u www-data COMPOSER_MEMORY_LIMIT=-1 composer require drush/drush --no-interaction
+
+            sudo -u www-data /var/www/html/drupal/vendor/bin/drush site:install standard \
+              --db-url=pgsql://postgres:1.2.3.4.@postgresql.dns_name/drupaldb \
+              --site-name="Mi Sitio Drupal" \
+              --account-name=admin \
+              --account-pass=adminpassword \
+              --yes
+
+            sudo chmod 444 /var/www/html/drupal/sites/default/settings.php
+
+            # Reiniciar Apache
+            sudo systemctl restart apache2
+
+
+
+           # Crear un archivo de estado para la salud de las instancias
+           sudo echo "OK" > /var/www/html/health

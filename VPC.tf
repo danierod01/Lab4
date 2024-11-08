@@ -9,28 +9,33 @@ module "vpc" {
   azs                = var.availability_zones
   public_subnets     = var.public_subnets
   private_subnets    = var.private_subnets
-  enable_nat_gateway = var.enable_nat_gateway
-  
+  enable_nat_gateway = true
+
   enable_dns_hostnames = true
   enable_dns_support   = true
 
-    tags = merge(var.tags, {
-    additional_tag = "VPC-Lab4"
+
+  tags = merge(var.tags, {
+    Name = "VPC-Lab4"
   })
 }
 
+// Añadir la data source para la región actual
+data "aws_region" "current" {}
+
 //Crear VPC endpoint para S3
 resource "aws_vpc_endpoint" "s3-lab4" {
-  vpc_id       = aws_vpc.main.id
-  service_name = "com.amazonaws.${data.aws_region.current.name}.s3"
+  vpc_id            = module.vpc.vpc_id
+  service_name      = "com.amazonaws.${data.aws_region.current.name}.s3"
   vpc_endpoint_type = "Gateway"
-policy = jsonencode({
+
+  policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
         Effect    = "Allow"
         Principal = "*"
-        Action    = [
+        Action = [
           "s3:GetObject",
           "s3:PutObject",
           "s3:ListBucket"
@@ -42,8 +47,9 @@ policy = jsonencode({
       }
     ]
   })
+
   tags = merge(var.tags, {
-    additional_tag = "S3-Endpoint-Lab4"
+    Name = "S3-Endpoint-Lab4"
   })
 }
 
@@ -51,7 +57,8 @@ policy = jsonencode({
 //Asociar tablas de rutas del VPC endpoint
 resource "aws_vpc_endpoint_route_table_association" "private_s3" {
   count = length(module.vpc.private_route_table_ids)
-  
+
   vpc_endpoint_id = aws_vpc_endpoint.s3-lab4.id
   route_table_id  = module.vpc.private_route_table_ids[count.index]
 }
+

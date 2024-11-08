@@ -9,7 +9,7 @@ resource "aws_security_group" "SG-instancias" {
     from_port       = 80
     to_port         = 80
     protocol        = "tcp"
-    security_groups = [aws_security_group.alb_sg.id]
+    security_groups = [aws_security_group.alb_externo_sg.id]
   }
 
   ingress {
@@ -19,15 +19,29 @@ resource "aws_security_group" "SG-instancias" {
     security_groups = [aws_security_group.SG-EFS.id]
   }
 
+  ingress {
+    from_port       = 443
+    to_port         = 443
+    protocol        = "tcp"
+    security_groups = [aws_security_group.alb_externo_sg.id]
+  }
+
+  egress {
+    from_port       = 5432
+    to_port         = 5432
+    protocol        = "tcp"
+    security_groups = [aws_security_group.SG-PSQL.id]
+  }
+
   egress {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
-  
+
   tags = merge(var.tags, {
-    additional_tag = "SG-Instancias-Lab4"
+    Name = "SG-Instancias-Lab4"
   })
 }
 
@@ -43,11 +57,84 @@ module "autoscaling" {
   launch_template_description = "Launch Template del Laboratorio 4"
   update_default_version      = true
 
-  image_id          = "ami-0866a3c8686eaeeba"
+  image_id          = "ami-0aa516a66ab111371"
   instance_type     = "t2.micro"
   ebs_optimized     = true
   enable_monitoring = true
   security_groups   = [aws_security_group.SG-instancias.id]
+
+  user_data = base64encode(<<-EOF
+    #!/bin/bash -e
+
+    # 1. Montar el EFS si no está montado
+    if ! mountpoint -q "/mnt/efs"; then
+      echo "EFS no está montado en /mnt/efs, montándolo..."
+      sudo mkdir -p "/mnt/efs"
+      sudo mount -t nfs4 efs.dns_name:/ /mnt/efs
+    else
+      echo "EFS ya está montado en /mnt/efs"
+    fi
+
+    # 2. Verificar y crear carpeta /mnt/efs/drupal si no existe
+    if [ ! -d "/mnt/efs/drupal/" ]; then
+      echo "Directorio /mnt/efs/drupal/ no existe. Creándolo..."
+      sudo mkdir -p "/mnt/efs/drupal/"
+    fi
+
+    # 3. Verificar y copiar contenido si /mnt/efs/drupal está vacío (y evitar sobrescribir)
+    if [ -d "/var/www/html/drupal" ] && [ -z "$(ls -A "/mnt/efs/drupal")" ]; then
+      echo "Copiando contenido de /var/www/html/drupal a /mnt/efs/drupal..."
+      sudo cp -R "/var/www/html/drupal/"* "/mnt/efs/drupal"
+    else
+      echo "/mnt/efs/drupal ya tiene contenido; no se realiza la copia."
+    fi
+
+    # 4. Crear carpeta de respaldo y mover la instalación actual de Drupal si existe
+    if [ -d "/var/www/html/drupal" ]; then
+      echo "Creando respaldo en /var/www/html_backup y moviendo /var/www/html/drupal..."
+      sudo mkdir -p "/var/www/html_backup"
+      sudo mv "/var/www/html/drupal" "/var/www/html_backup"
+    fi  
+
+    # 5. Crear enlace simbólico desde /var/www/html/drupal a /mnt/efs/drupal
+    if [ ! -L "/var/www/html/drupal" ]; then
+      echo "Creando enlace simbólico entre /var/www/html/drupal y /mnt/efs/drupal..."
+      sudo ln -s "/mnt/efs/drupal" "/var/www/html/drupal"
+    fi  
+
+    sudo chown -R www-data:www-data "/var/www/html/drupal/sites/default/files"
+    sudo chmod -R 775 "/var/www/html/drupal/sites/default/files"
+
+    sudo curl -o /var/www/html/drupal/.htaccess https://raw.githubusercontent.com/drupal/drupal/9.0.x/.htaccess
+
+    sudo chown www-data:www-data /var/www/html/drupal/.htaccess
+    sudo chmod 644 /var/www/html/drupal/.htaccess
+
+    sudo -u www-data /var/www/html/drupal/vendor/bin/drush pm:enable redis -y
+
+    # 6. Verificar si Drupal está instalado en la base de datos
+      if sudo -u www-data /var/www/html/drupal/vendor/bin/drush sql:connect; then
+  if ! sudo -u www-data /var/www/html/drupal/vendor/bin/drush status --field=db-status | grep -q "Connected"; then
+    echo "Instalando Drupal en la base de datos..."
+    sudo -u www-data/var/www/html/drupal/vendor/bin/drush site:install \
+      --db-url="pgsql://postgres:password1.2.3.4.@postgresql.dns_name/drupaldb" \
+      --site-name="Laboratorio 4 Daniel Muñoz" \
+      --account-name="admin" \
+      --account-pass="adminpassword"  -y
+    # Asegurarse de que el nombre se aplique correctamente
+    sudo -u www-data /var/www/html/drupal/vendor/bin/drush config-set "system.site" name "Laboratorio 4 Daniel Muñoz" -y
+      else
+        echo "Drupal ya está instalado en la base de datos."
+      fi
+    else
+      echo "No se pudo conectar a la base de datos. Verificar configuración."
+    fi
+    sudo systemctl restart apache2
+
+    echo "OK" > /var/www/html/drupal/health
+
+EOF
+  )
 
   // Creación de perfil de instancia IAM
   create_iam_instance_profile = true
@@ -58,10 +145,10 @@ module "autoscaling" {
   }
 
   // Atachar el Target Group
-   traffic_source_attachments = {
+  traffic_source_attachments = {
     ex-alb = {
-      traffic_source_identifier = aws_lb_target_group.tg-alb.arn
-      traffic_source_type      = "elbv2"
+      traffic_source_identifier = aws_lb_target_group.tg-alb-externo.arn
+      traffic_source_type       = "elbv2"
     }
   }
 
@@ -73,147 +160,10 @@ module "autoscaling" {
   vpc_zone_identifier = module.vpc.private_subnets
   health_check_type   = "ELB"
 
-  user_data = base64encode(<<-EOF
-              #!/bin/bash
-
-              # Actualizar paquetes y el sistema
-              sudo apt update -y
-              sudo apt upgrade -y
-              
-
-              # Instalar los recursos necesarios para montar el EFS, servidor Apache, PHP, y las extensiones que son necesarias para drupal
-              sudo apt install -y amazon-efs-utils nfs-utils -y apache2 php libapache2-mod-php php-cli php-curl php-gd php-xml php-mbstring php-zip php-json php-pgsql 
-
-              # Instalar cliente CLI de AWS
-              sudo curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-              sudo unzip awscliv2.zip
-              sudo ./aws/install
-
-              # Habilitar apache
-              sudo systemctl enable apache2
-              sudo systemctl start apache2
-
-              # Obtener las credenciales de la Base de Datos PostgreSQL
-              SECRET_NAME="postgre_credentials"
-              REGION="us-east-1"
-
-              DB_CREDS=$(aws secretsmanager get-secret-value --secret-id $SECRET_NAME --region $REGION --query SecretString --output text)
-              DB_USERNAME=$(echo $DB_CREDS | jq -r .username)
-              DB_PASSWORD=$(echo $DB_CREDS | jq -r .password)
-
-              # Instalación de drupal
-
-              # Instalar el cliente de PostgreSQL
-              sudo apt install -y postgresql-client
-
-              # Habilitar el módulo rewrite de Apache para que funcione con Drupal
-              sudo a2enmod rewrite
-
-              # Descargar Drupal y descomprimir en /var/www/html/drupal
-              sudo cd /tmp
-              curl -sSL https://www.drupal.org/download-latest/tar.gz -o drupal.tar.gz
-              sudo tar -xzf drupal.tar.gz
-              sudo mv drupal-* /var/www/html/drupal
-
-              # Configurar permisos para que Apache pueda acceder a los archivos de Drupal
-              sudo chown -R www-data:www-data /var/www/html/drupal
-              sudo chmod -R 755 /var/www/html/drupal
-
-              # Crear un archivo de configuración Virtual Host para Drupal
-              sudo cat <<EOF | sudo tee /etc/apache2/sites-available/drupal.conf
-              <VirtualHost *:80>
-                  ServerAdmin admin@example.com
-                  DocumentRoot /var/www/html/drupal
-                  ServerName alb.lab4_internal
-
-                  <Directory /var/www/html/drupal>
-                      AllowOverride All
-                      Require all granted
-                  </Directory>
-
-                  ErrorLog \${APACHE_LOG_DIR}/drupal_error.log
-                  CustomLog \${APACHE_LOG_DIR}/drupal_access.log combined
-              </VirtualHost>
-              EOF>>
-
-              # Habilitar el nuevo sitio en Apache
-              sudo a2ensite drupal.conf
-
-              # Reiniciar Apache para aplicar cambios
-              sudo systemctl restart apache2
-
-              # Crear archivo settings.php para Drupal con configuración para PostgreSQL
-              sudo cd /var/www/html/drupal/sites/default
-              sudo cp default.settings.php settings.php
-
-              # Se hace a apache el propietario del archivo
-              sudo chown -R www-data:www-data /var/www/html/drupal/sites/default/settings.php
-
-              # Darle permisos de lectura y escritura
-              sudo chmod 666 /var/www/html/drupal/sites/default/settings.php
-
-              # Se crea el directorio /Files
-              sudo mkdir files
-
-              # Se hace a apache propietario de la carpeta files
-              sudo chown -R www-data:www-data /var/www/html/drupal/sites/default/files
-
-              # Se le da permisos de todo al propietario, y a otros de lectura y escritura
-              sudo chmod -R 755 /var/www/html/drupal/sites/default/files
-
-              # Se crea la carpeta translations
-              sudo mkdir /var/www/html/drupal/sites/default/files/translations
-
-              # Cambiar el propietario de la carpeta y su contenido a www-data
-              sudo chown -R www-data:www-data /var/www/html/drupal/sites/default/files/translations
-
-              # Asignar permisos 755 a la carpeta translations
-              sudo chmod 755 /var/www/html/drupal/sites/default/files/translations
-
-              # Asignar permisos 644 a todos los archivos dentro de translations
-              sudo find /var/www/html/drupal/sites/default/files/translations -type f -exec chmod 644 {} \;
-
-            # Asegurarse de que todas las subcarpetas dentro de translations tengan permisos 755
-            sudo find /var/www/html/drupal/sites/default/files/translations -type d -exec chmod 755 {} \;
-
-                cat <<EOT >> /var/www/html/sites/default/settings.php
-
-                \$databases['default']['default'] = array (
-                  'driver' => 'pgsql',
-                  'database' => 'mydb',
-                  'username' => '$DB_USERNAME',
-                  'password' => '$DB_PASSWORD',
-                  'host' => 'db.internal.example.com',  # Reemplaza con el endpoint DNS interno de RDS
-                  'port' => '5432',
-                  'prefix' => '',
-                );
-
-                EOT
-
-                
-                sudo mkdir -p /mnt/efs
-
-                mount -t efs -o tls ${aws_efs_file_system.EFS-Lab4.id}:/ /mnt/efs
-
-                # Añadir el EFS al /etc/fstab para montaje automático en reinicios
-                echo "${aws_efs_file_system.EFS-Lab4.id}:/ /mnt/efs efs _netdev,tls 0 0" >> /etc/fstab
-
-                
-
-                # Añadir el DNS interno del endpoint de la DB como host
-                DB_HOST="postgresql.lab4.internal"
-
-                # Usar el endpoint de la VPC con DNS interno para conectar con el S3
-                S3_ENDPOINT="s3.lab4.internal"
-
-                # Crear un archivo de estado para la salud de las instancias
-                sudo echo "OK" > /var/www/html/health
-                EOF
-  )
-
   tags = merge(var.tags, {
-    additional_tag = "ASG-Lab4"
+    Name = "ASG-Lab4"
   })
 
-  depends_on = [aws_lb_target_group.tg-alb]
+  depends_on = [aws_lb_target_group.tg-alb-interno, aws_efs_file_system.EFS-Lab4, 
+  aws_db_instance.PSQL-Lab4, aws_elasticache_replication_group.redis_lab4, aws_elasticache_cluster.memcached_lab4]
 }
