@@ -1,5 +1,7 @@
 LEER TODO EL README POR FAVOR, PARA COMPRENDER EL CONTEXTO DEL DESARROLLO DEL LABORATORIO.
 
+LEER EL README.MD ACCEDIENDO AL ARCHIVO Y PONIENDOLO PARA VISUALIZARLO EN CODE, SI NO, HAY UNA PARTE QUE NO SE ENTIENDE.
+
 Lista de comandos usados en la terminal de VS Code para realizar la conexión con el repositorio:
 
 git config --global user.name "danierod01"
