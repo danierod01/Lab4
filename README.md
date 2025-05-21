@@ -1,7 +1,11 @@
 Terraform AWS Lab - Infraestructura como Código
 
+Este laboratorio consiste en desplegar la infraestructura necesaria para alojar una página web tipo CMS (Content Management System) en la nube de AWS utilizando **Terraform**. El principal requerimiento funcional es que la aplicación haga uso de una base de datos **PostgreSQL**, que se implementa a través del servicio **Amazon RDS**. El objetivo es aplicar prácticas reales de DevOps e Infrastructure as Code para automatizar, escalar y asegurar todos los recursos necesarios.
+
 Este proyecto utiliza Terraform para provisionar infraestructura completa en Amazon Web Services (AWS) de forma automatizada, segura y escalable. Forma parte de un laboratorio avanzado de despliegue de servicios cloud bajo el enfoque de Infrastructure as Code (IaC).
 
+**Observación importante**:  
+Este proyecto **no utiliza una AMI pública estándar** de AWS. En su lugar, se **crea una AMI personalizada por el usuario**, a través de una instancia base configurada con `user_data` y luego reutilizada mediante un *launch template*. Esto garantiza que el entorno de las instancias EC2 esté totalmente adaptado al CMS desplegado.
 
 Tecnologías utilizadas:
 - Terraform v1.7.0 o superior
