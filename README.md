@@ -1,6 +1,8 @@
 Terraform AWS Lab - Infraestructura como Código
 
-Este proyecto utiliza Terraform para provisionar infraestructura completa en Amazon Web Services (AWS) de forma automatizada, segura y escalable. Forma parte de un laboratorio avanzado de despliegue de servicios cloud bajo el enfoque de Infrastructure as Code (IaC).Tecnologías utilizadas
+Este proyecto utiliza Terraform para provisionar infraestructura completa en Amazon Web Services (AWS) de forma automatizada, segura y escalable. Forma parte de un laboratorio avanzado de despliegue de servicios cloud bajo el enfoque de Infrastructure as Code (IaC).
+
+Tecnologías utilizadas
 Terraform v1.7.0 o superior
 AWS Provider v5.35.0
 Amazon Web Services (AWS)
@@ -22,30 +24,30 @@ Este script despliega los siguientes recursos:
 Cómo usar este proyecto
 1.	Clonar el repositorio
 
-git clone https://github.com/danierod01/Lab4.git
-cd Lab4
+	git clone https://github.com/danierod01/Lab4.git
+	cd Lab4
 
 2.	Configurar tus credenciales de AWS
 Puedes exportarlas en tu terminal o usar un perfil configurado con aws configure.
 
-export AWS_ACCESS_KEY_ID=your_key
-export AWS_SECRET_ACCESS_KEY=your_secret
+	export AWS_ACCESS_KEY_ID=your_key
+	export AWS_SECRET_ACCESS_KEY=your_secret
 
 3.	Inicializar Terraform
 
-terraform init
+	terraform init
 
 4.	Ver plan de ejecución
 
-terraform plan
+	terraform plan
 
 5.	Aplicar los cambios
 
-terraform apply
+	terraform apply
 
 6.	(Opcional) Destruir al infraestructura
 
-terraform destroy
+	terraform destroy
 
 
 Estructura del repositorio
