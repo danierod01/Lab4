@@ -51,56 +51,57 @@ Puedes exportarlas en tu terminal o usar un perfil configurado con aws configure
 
 
 Estructura del repositorio
-Archivo/Carpeta  	Descripción
+
+
 - ALB.tf: 
 
-Define un Application Load Balancer para distribuir tráfico entre instancias.
+	Define un Application Load Balancer para distribuir tráfico entre instancias.
 
 - ASG.tf:
 
-Configura un Auto Scaling Group para escalar dinámicamente EC2.
+	Configura un Auto Scaling Group para escalar dinámicamente EC2.
 
 - CloudWatch.tf
 
-Crea alarmas y métricas con CloudWatch para monitoreo.
+	Crea alarmas y métricas con CloudWatch para monitoreo.
 
 - EFS.tf:
-Implementa un Elastic File System compartido entre instancias.
+	Implementa un Elastic File System compartido entre instancias.
 
 - Elasticache.tf
 
-Crea un clúster de ElastiCache para almacenamiento en caché.
+	Crea un clúster de ElastiCache para almacenamiento en caché.
 
 - IAM.tf:
-Define roles y políticas de acceso (IAM) necesarios.
+	Define roles y políticas de acceso (IAM) necesarios.
 
 - RDS.tf:
 
-Despliega una base de datos RDS para almacenamiento estructurado.
+	Despliega una base de datos RDS para almacenamiento estructurado.
 
 - Route53.tf:
-Gestiona registros DNS a través de Route 53.
+	Gestiona registros DNS a través de Route 53.
 
 - SNS.tf:
-Configura un topic de SNS para notificaciones y alertas.
+	Configura un topic de SNS para notificaciones y alertas.
 
 - VPC Peering.tf:
 
-Establece peering entre VPCs para comunicación privada.
+	Establece peering entre VPCs para comunicación privada.
 
 - VPC.tf:
 
-Crea una VPC principal con subredes, tablas de ruteo y gateways.
+	Crea una VPC principal con subredes, tablas de ruteo y gateways.
 
 - Variables.tf
-Define variables de entrada reutilizables en el proyecto.
+	Define variables de entrada reutilizables en el proyecto.
 
 - providers.tf:
 
-Configura el proveedor de AWS necesario para Terraform.
+	Configura el proveedor de AWS necesario para Terraform.
 
 - s3.tf:
-Crea buckets de S3 para almacenamiento u otros propósitos.
+	Crea buckets de S3 para almacenamiento u otros propósitos.
 
 Carpetas adicionales
 Carpeta	          Descripción
