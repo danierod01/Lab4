@@ -2,11 +2,13 @@ Terraform AWS Lab - Infraestructura como Código
 
 Este proyecto utiliza Terraform para provisionar infraestructura completa en Amazon Web Services (AWS) de forma automatizada, segura y escalable. Forma parte de un laboratorio avanzado de despliegue de servicios cloud bajo el enfoque de Infrastructure as Code (IaC).
 
+
 Tecnologías utilizadas:
 - Terraform v1.7.0 o superior
 - AWS Provider v5.35.0
 - Amazon Web Services (AWS)
 - IDE: Visual Studio Code / Terraform CLI
+
 
 Recursos AWS desplegados
 Este script despliega los siguientes recursos:
@@ -20,6 +22,7 @@ Este script despliega los siguientes recursos:
 -	IAM roles y políticas
 -	CloudWatch y SNS para monitoreo y alertas
 -	KMS para cifrado de datos
+
 
 Cómo usar este proyecto
 1.	Clonar el repositorio
@@ -48,6 +51,7 @@ Puedes exportarlas en tu terminal o usar un perfil configurado con aws configure
 6.	(Opcional) Destruir al infraestructura
 
 	terraform destroy
+
 
 
 Estructura del repositorio
@@ -109,6 +113,8 @@ Estructura del repositorio
 
 	Crea buckets de S3 para almacenamiento u otros propósitos.
 
+
+
 Carpetas adicionales
 
 - KMS/
@@ -126,6 +132,7 @@ Carpetas adicionales
 - Certificados/
 
   	Almacena certificados o configuraciones relacionadas con seguridad y cifrado TLS/SSL.
+
   
 
 Archivos adicionales
