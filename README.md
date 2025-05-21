@@ -2,11 +2,11 @@ Terraform AWS Lab - Infraestructura como Código
 
 Este proyecto utiliza Terraform para provisionar infraestructura completa en Amazon Web Services (AWS) de forma automatizada, segura y escalable. Forma parte de un laboratorio avanzado de despliegue de servicios cloud bajo el enfoque de Infrastructure as Code (IaC).
 
-Tecnologías utilizadas
-Terraform v1.7.0 o superior
-AWS Provider v5.35.0
-Amazon Web Services (AWS)
-IDE: Visual Studio Code / Terraform CLI
+Tecnologías utilizadas:
+- Terraform v1.7.0 o superior
+- AWS Provider v5.35.0
+- Amazon Web Services (AWS)
+- IDE: Visual Studio Code / Terraform CLI
 
 Recursos AWS desplegados
 Este script despliega los siguientes recursos:
