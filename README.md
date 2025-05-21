@@ -111,19 +111,19 @@ Estructura del repositorio
 
 Carpetas adicionales
 
-- KMS/:
+- KMS/
 
   	Define recursos del servicio de cifrado KMS.
   
-- cloudfront/:
+- cloudfront/
 
   	Configura una distribución de CloudFront para entrega optimizada de contenido.
   
-- user_data/:
+- user_data/
 
   	Contiene scripts para la configuración automática de instancias EC2 al iniciar.
   
-- Certificados/:
+- Certificados/
 
   	Almacena certificados o configuraciones relacionadas con seguridad y cifrado TLS/SSL.
   
