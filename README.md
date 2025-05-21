@@ -1,147 +1,94 @@
-LEER TODO EL README POR FAVOR, PARA COMPRENDER EL CONTEXTO DEL DESARROLLO DEL LABORATORIO.
+Terraform AWS Lab - Infraestructura como Código
+Este proyecto utiliza Terraform para provisionar infraestructura completa en Amazon Web Services (AWS) de forma automatizada, segura y escalable. Forma parte de un laboratorio avanzado de despliegue de servicios cloud bajo el enfoque de Infrastructure as Code (IaC).Tecnologías utilizadas
+Terraform v1.7.0 o superior
+AWS Provider v5.35.0
+Amazon Web Services (AWS)
+IDE: Visual Studio Code / Terraform CLI
 
-LEER EL README.MD ACCEDIENDO AL ARCHIVO Y PONIENDOLO PARA VISUALIZARLO EN CODE, SI NO, HAY UNA PARTE QUE NO SE ENTIENDE.
+Recursos AWS desplegados
+Este script despliega los siguientes recursos:
+-	VPC y peering de VPCs
+-	Instancias EC2 con Auto Scaling y ALB
+-	RDS (Relational Database Service)
+-	ElastiCache para caching
+-	EFS (Elastic File System)
+-	S3 buckets
+-	CloudFront + Route 53
+-	IAM roles y políticas
+-	CloudWatch y SNS para monitoreo y alertas
+-	KMS para cifrado de datos
 
-Lista de comandos usados en la terminal de VS Code para realizar la conexión con el repositorio:
+Cómo usar este proyecto
+1.	Clonar el repositorio
 
-git config --global user.name "danierod01"
-git config --global user.email "daniel01mr@gmail.com"
-git init
-git add .
-git commit -m "Primer commit del lab4"
-git remote add origin https://github.com/danierod01/Lab4.git
-git push -u origin main
+git clone https://github.com/danierod01/Lab4.git
+cd Lab4
 
-Una vez hecho esto, me pide un nombre de usuario, y una contraseña, aquí he usado un token de GitHub, debido a que el anterior se caducó.
+2.	Configurar tus credenciales de AWS
+Puedes exportarlas en tu terminal o usar un perfil configurado con aws configure.
 
- Resumen de la Arquitectura
+export AWS_ACCESS_KEY_ID=your_key
+export AWS_SECRET_ACCESS_KEY=your_secret
 
-La infraestructura desplegada consiste en:
+3.	Inicializar Terraform
 
-1 Componentes de Red
-- VPC con subredes públicas y privadas
-- ALB externo (público) que escucha en puertos 80/443 con redirección a HTTPS
-- ALB interno (privado) que escucha en puerto 80
-- CloudFront como CDN conectado al ALB interno
+terraform init
 
-2 Capa de Aplicación
-- Auto Scaling Group (ASG) con:
-  - Mínimo 2 y máximo 3 instancias
-  - Despliegue de Drupal
-  - Montaje de EFS para archivos compartidos
-  - Configuración de health checks
+4.	Ver plan de ejecución
 
-3 Capa de Datos
-- Base de datos PostgreSQL para Drupal
-- Redis para caché principal
-- Memcached para caché de sesiones
-- EFS para almacenamiento compartido de archivos
+terraform plan
 
-4 Monitorización
-- Alarmas de CloudWatch para:
-  - CPU del ASG
-  - Errores 5XX del ALB
-  - Conexiones a PostgreSQL 
-  - CPU de Redis
+5.	Aplicar los cambios
 
-5 Seguridad
-- Certificados SSL/TLS para HTTPS
-- Secrets Manager para credenciales de base de datos
-- Security Groups específicos para cada componente
-- IAM roles y políticas
+terraform apply
 
-6 Problemas Identificados
-1. Problemas de conexión con la base de datos usando los secretos configurados
-2. Problemas con CloudFront en puerto 443 a pesar de tener certificado SSL en el ALB
+6.	(Opcional) Destruir al infraestructura
 
-Hay que aclarar varios puntos:
+terraform destroy
 
-Cuando se ejecute el código de este laboratorio de terraform, se debe esperar para que las instancias queden configuradas completamente.
 
-Ha habido un problema al final del desarrollo del laboratorio, como bien se dice más abajo, se intenta crear un ASG con una ami personalizada la cual ha sido puesta a disposición del profesor.
+Estructura del repositorio
+Archivo/Carpeta  	Descripción
+ALB.tf	           Define un Application Load Balancer para distribuir tráfico entre instancias.
+ASG.tf	           Configura un Auto Scaling Group para escalar dinámicamente EC2.
+CloudWatch.tf     Crea alarmas y métricas con CloudWatch para monitoreo.
+EFS.tf	           Implementa un Elastic File System compartido entre instancias.
+Elasticache.tf	   Crea un clúster de ElastiCache para almacenamiento en caché.
+IAM.tf	           Define roles y políticas de acceso (IAM) necesarios.
+RDS.tf	           Despliega una base de datos RDS para almacenamiento estructurado.
+Route53.tf        Gestiona registros DNS a través de Route 53.
+SNS.tf	           Configura un topic de SNS para notificaciones y alertas.
+VPC Peering.tf	   Establece peering entre VPCs para comunicación privada.
+VPC.tf	           Crea una VPC principal con subredes, tablas de ruteo y gateways.
+Variables.tf      Define variables de entrada reutilizables en el proyecto.
+providers.tf	     Configura el proveedor de AWS necesario para Terraform.
+s3.tf	            Crea buckets de S3 para almacenamiento u otros propósitos.
 
-Al ejecutar el user data, cloud init no lo interpreta correctamente, por lo que no se ejecuta el user data, aunque esto sí que estaba funcionando durante el desarrollo del laboratorio, y, por cuestiones de tiempo, ya que esto pasó en las últimas horas de laboratorio, no se ha podido solucionar. Por esta misma causa, no se podrá usar el EFS, ni se instala directamente Drupal en la Base de Datos, que era el plan inicial de este laboratorio. 
+Carpetas adicionales
+Carpeta	          Descripción
+KMS/	             Define recursos del servicio de cifrado KMS.
+cloudfront/	      Configura una distribución de CloudFront para entrega optimizada de contenido.
+user_data/	       Contiene scripts para la configuración automática de instancias EC2 al iniciar.
+Certificados/	    Almacena certificados o configuraciones relacionadas con seguridad y cifrado TLS/SSL.
 
-Si el profesor lo desea, puede ejecutar el user data como un script en la instancia, y así se solucionaría el problema.
+Archivos adicionales
+Archivo	          Descripción
+.gitignore	       Archivos y carpetas excluidos del control de versiones.
+Diagrama_Lab4.pdf	Diagrama visual de la arquitectura desplegada.
+imagen.jpg	       Imagen usada para el contenedor S3.
+README.md	        Este archivo, con toda la documentación del proyecto.
 
-A la hora de organizar el código, se ha optado por dividirlo según los servicios y recursos que se van a crear, de forma que el mismo código quede mejor estructurado y más fácil de entender. Ya que, si los archivo están en la misma carpeta, al hacer un apply, toma todos los archivos como uno solo, por lo que las referencias a los recursos de otros archivos funcionan.
+Consideraciones
+Asegúrate de contar con permisos adecuados en tu cuenta AWS.
+No subas claves de acceso ni archivos sensibles (terraform.tfvars, .tfstate, etc.).
+Puedes usar backend remoto (ej. S3 + DynamoDB) para almacenar el estado en producción.
+	
+Contribuciones
+Contribuciones, ideas y sugerencias son bienvenidas. ¡No dudes en abrir un pull request o issue!
 
-Para llevar a cabo este laboratorio, se ha creado una AMI a partir de una instancia, a la cual se le han pasado todos los comandos escritos en el archivo "User_Data". Esta AMI ha sido utilizada en el Grupo de Autoscaling, el cual también tiene un user data, el cual usa una serie de condicionantes para comprobar si el efs está montado, y si no lo está, lo monta, al igual que una serie de carpetas, y también la instalación de Drupal, de forma que la primera instancia lo haga y las demás solo tengan que montar el EFS y acceder a la instalación ya creada.
+Licencia
+Este proyecto está bajo la licencia MIT. Consulta e	l archivo LICENSE para más detalles.
+de datos y la página web, y no daba ningún resultado positivo.
 
-Para garantizar que drush puede usarse con la caché de Redis, se usa en el user data el comando "sudo -u www-data /var/www/html/drupal/vendor/bin/drush pm:enable redis -y", esto habilita el módulo de Redis para Drupal.
-
-Para comprobar que la caché de Redis está funcionando, se usa el comando "sudo -u www-data /var/www/html/drupal/vendor/bin/drush cr", esto limpia la caché de Drupal.
-
-A la hora de usar los comandos del archivo user_data, había que comprobar varias cosas, como por ejemplo:
-
-Para verificar que tanto Redis como Memcached funcionan en la web, se usan los comandos siguientes dentro de una instancia:
-
-redis-cli -h redis.dns_name Este comando se usa para conectarse a Redis desde la terminal de la instancia.
-
-KEYS drupal_* Una vez dentro de Redis, se usa este comando para mostrar el contenido cacheado de Drupal en Redis.
-
-echo "stats" | nc memcached.dns_name 11211 Este comando muestra los datos de memcached, y muestra el número de conexiones y de sesiones almacenadas.
-
-En el uso de KMS y Secrets Manager se han experimentado errores, y se ha decidido no implementarlos para poder asegurar el funcinamiento de la web, ya que al usar la siguiente configuración en settings.php no funcionaba:
-
-<?php
-
-require 'vendor/autoload.php';
-
-use Aws\SecretsManager\SecretsManagerClient;
-use Aws\Exception\AwsException;
-
-$client = new SecretsManagerClient([
-    'version' => 'latest',
-    'region'  => 'us-east-1'  
-]);
-
-try {
-    $result = $client->getSecretValue([
-        'SecretId' => 'postgre-creds',  
-    ]);
-
-    $secret = json_decode($result['SecretString'], true);
-    } 
-
-catch (AwsException $e) {
-    echo "Error al conseguir el secreto: " . $e->getMessage();
-}
-
-$settings['hash_salt'] = 'dqmM5gLf3L7lkxBD33Lm-18n0mLDz0p70ctH54-ywS1bvhH8WXwvppxmT52OSNQsLgw0oaO3Wg';
-$settings['update_free_access'] = TRUE;
-$config_directories['sync'] = '/var/www/html/drupal/config/sync';
-$databases['default']['default'] = array (
-'database' => 'drupaldb',
-'username' => $(aws secretsmanager get-secret-value --secret-id ${aws_secretsmanager_secret.db_username.id} --region ${data.aws_region.current.name} --query 'SecretString' --output text),
-'password' => $(aws secretsmanager get-secret-value --secret-id ${aws_secretsmanager_secret.db_password.id} --region ${data.aws_region.current.name} --query 'SecretString' --output text),
-'prefix' => '',
-'host' => 'postgresql.dns_name',
-'port' => '5432',
-'driver' => 'pgsql',
-'namespace' => 'Drupal\\pgsql\\Driver\\Database\\pgsql',
-'autoload' => 'core/modules/pgsql/src/Driver/Database/pgsql/',
-);
-$settings['config_sync_directory'] = 'sites/default/files/config_tkM5Xch2-zZjN9woTj-4GxnI1HmEFwql3dHEJGSzHwM5Aop-UdUmcdu-t-FAHB6btlB7xOTghg/sync';
-$settings['redis.connection']['interface'] = 'PhpRedis';
-$settings['redis.connection']['host'] = 'redis.dns_name';
-$settings['redis.connection']['port'] = '6379';
-$settings['cache']['default'] = 'cache.backend.redis';
-$settings['cache_prefix']['default'] = 'drupal_';
-$settings['cache']['bins']['form'] = 'cache.backend.database';
-$settings['container_yamls'][] = 'modules/contrib/redis/redis.services.yml';
-
-if (file_exists($app_root . '/' . $site_path . '/modules/contrib/redis/example.services.yml')) {
-    $settings['container_yamls'][] = 'modules/contrib/redis/example.services.yml';
-    error_log('Redis services.yml loaded');
-}
-// Usar Memcached para la caché de sesiones
-$settings['memcache']['bins']['session'] = 'default';
-ini_set('session.save_handler', 'memcached');
-ini_set('session.save_path', 'memcached.dns_name:11211');
-
-Al hacer esta configuración en el archivo settings.php, contando con los secretos que están creados en el archivo KMS, se intentaba la conexión con la base de datos y la página web, y no daba ningún resultado positivo.
-
-Algo parecido pasa con Cloudfront, ya que por el puerto 80 funciona perfectamente, pero cuando se usa por el puerto 443, teniendo el alb un certficiado SSL, daba errores.
 
 
