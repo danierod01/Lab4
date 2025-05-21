@@ -52,34 +52,34 @@ Puedes exportarlas en tu terminal o usar un perfil configurado con aws configure
 
 Estructura del repositorio
 Archivo/Carpeta  	Descripción
-ALB.tf	           Define un Application Load Balancer para distribuir tráfico entre instancias.
-ASG.tf	           Configura un Auto Scaling Group para escalar dinámicamente EC2.
-CloudWatch.tf     Crea alarmas y métricas con CloudWatch para monitoreo.
-EFS.tf	           Implementa un Elastic File System compartido entre instancias.
-Elasticache.tf	   Crea un clúster de ElastiCache para almacenamiento en caché.
-IAM.tf	           Define roles y políticas de acceso (IAM) necesarios.
-RDS.tf	           Despliega una base de datos RDS para almacenamiento estructurado.
-Route53.tf        Gestiona registros DNS a través de Route 53.
-SNS.tf	           Configura un topic de SNS para notificaciones y alertas.
-VPC Peering.tf	   Establece peering entre VPCs para comunicación privada.
-VPC.tf	           Crea una VPC principal con subredes, tablas de ruteo y gateways.
-Variables.tf      Define variables de entrada reutilizables en el proyecto.
-providers.tf	     Configura el proveedor de AWS necesario para Terraform.
-s3.tf	            Crea buckets de S3 para almacenamiento u otros propósitos.
+- ALB.tf	           Define un Application Load Balancer para distribuir tráfico entre instancias.
+- ASG.tf	           Configura un Auto Scaling Group para escalar dinámicamente EC2.
+- CloudWatch.tf     Crea alarmas y métricas con CloudWatch para monitoreo.
+- EFS.tf	           Implementa un Elastic File System compartido entre instancias.
+- Elasticache.tf	   Crea un clúster de ElastiCache para almacenamiento en caché.
+- IAM.tf	           Define roles y políticas de acceso (IAM) necesarios.
+- RDS.tf	           Despliega una base de datos RDS para almacenamiento estructurado.
+- Route53.tf        Gestiona registros DNS a través de Route 53.
+- SNS.tf	           Configura un topic de SNS para notificaciones y alertas.
+- VPC Peering.tf	   Establece peering entre VPCs para comunicación privada.
+- VPC.tf	           Crea una VPC principal con subredes, tablas de ruteo y gateways.
+- Variables.tf      Define variables de entrada reutilizables en el proyecto.
+- providers.tf	     Configura el proveedor de AWS necesario para Terraform.
+- s3.tf	            Crea buckets de S3 para almacenamiento u otros propósitos.
 
 Carpetas adicionales
 Carpeta	          Descripción
-KMS/	             Define recursos del servicio de cifrado KMS.
-cloudfront/	      Configura una distribución de CloudFront para entrega optimizada de contenido.
-user_data/	       Contiene scripts para la configuración automática de instancias EC2 al iniciar.
-Certificados/	    Almacena certificados o configuraciones relacionadas con seguridad y cifrado TLS/SSL.
+- KMS/	             Define recursos del servicio de cifrado KMS.
+- cloudfront/	      Configura una distribución de CloudFront para entrega optimizada de contenido.
+- user_data/	       Contiene scripts para la configuración automática de instancias EC2 al iniciar.
+- Certificados/	    Almacena certificados o configuraciones relacionadas con seguridad y cifrado TLS/SSL.
 
 Archivos adicionales
 Archivo	          Descripción
-.gitignore	       Archivos y carpetas excluidos del control de versiones.
-Diagrama_Lab4.pdf	Diagrama visual de la arquitectura desplegada.
-imagen.jpg	       Imagen usada para el contenedor S3.
-README.md	        Este archivo, con toda la documentación del proyecto.
+- .gitignore	       Archivos y carpetas excluidos del control de versiones.
+- Diagrama_Lab4.pdf	Diagrama visual de la arquitectura desplegada.
+- imagen.jpg	       Imagen usada para el contenedor S3.
+- README.md	        Este archivo, con toda la documentación del proyecto.
 
 Consideraciones
 Asegúrate de contar con permisos adecuados en tu cuenta AWS.
